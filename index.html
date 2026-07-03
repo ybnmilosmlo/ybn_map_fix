@@ -296,6 +296,15 @@
     stroke-opacity: 1;
     filter: drop-shadow(0 0 6px rgba(53, 193, 232, 0.6));
   }
+  .tutorial-overlay-poly {
+    fill: rgba(255, 255, 255, 0);
+    stroke: none;
+    cursor: pointer;
+    transition: fill 0.2s ease-out;
+  }
+  .tutorial-overlay-poly:hover {
+    fill: rgba(255, 255, 255, 0.12);
+  }
   .zone-tag {
     position: absolute;
     font-family: var(--mono);
@@ -550,7 +559,7 @@
 
 <div class="map-card" id="mapCard">
   <!-- Replace with your real map image -->
-  <img class="basemap" src="https://i.ibb.co/qFsB0dDZ/MILOSTVIMAGE.png" alt="City map" onerror="this.style.display='none'; document.getElementById('noImgNote').style.display='flex';">
+  <img class="basemap" src="https://i.ibb.co/LfgrNWT/MILOSTVIMAGETUTORIAL.png" alt="City map" onerror="this.style.display='none'; document.getElementById('noImgNote').style.display='flex';">
   <div class="no-image-note" id="noImgNote" style="display:none;">
     <div>MAP.jpeg not found</div>
     <div>Place your map image next to this file, named <b>MAP.jpeg</b>.</div>
@@ -755,6 +764,12 @@ const ZONES = [
 ];
 // ============================================================
 
+// Invisible clickable overlay for the "WATCH A TUTORIAL" graphic baked
+// into the map image itself. Not a city zone — clicking it opens the
+// tutorial video link instead of the resource folder flow.
+const TUTORIAL_ZONE_PIXELS = "950,85,931,85,924,98,926,145,933,160,967,166,1244,175,1256,169,1261,153,1257,110,1242,99";
+const TUTORIAL_LINK = "#"; // replace with the real video link when ready
+
 const basemapImg = document.querySelector('.basemap');
 
 function pixelPointsToPercent(pixelPoints, naturalW, naturalH) {
@@ -814,6 +829,15 @@ function renderZones() {
     tag.style.transform = 'translate(-50%, -50%)';
     mapCard.appendChild(tag);
   });
+
+  // Invisible clickable overlay over the baked-in "WATCH A TUTORIAL" graphic
+  const tutorialPct = pixelPointsToPercent(TUTORIAL_ZONE_PIXELS, naturalW, naturalH);
+  const tutorialPointsAttr = tutorialPct.map(p => `${p[0]},${p[1]}`).join(' ');
+  const tutorialPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  tutorialPoly.setAttribute('points', tutorialPointsAttr);
+  tutorialPoly.setAttribute('class', 'tutorial-overlay-poly');
+  tutorialPoly.addEventListener('click', () => window.open(TUTORIAL_LINK, '_blank'));
+  zoneLayer.appendChild(tutorialPoly);
 }
 
 function openZone(zone) {
