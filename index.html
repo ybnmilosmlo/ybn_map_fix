@@ -70,16 +70,16 @@
   /* ── END PRELOADER ── */
 
   /* ── TV POWER-ON EFFECT ── */
-  #tv-content {
+  .tv-screen {
     transform-origin: 50% 50%;
   }
-  #tv-content.tv-off {
+  .tv-screen.tv-off {
     opacity: 0;
     clip-path: inset(50% 0 50% 0);
     transform: scaleY(0.015);
     filter: brightness(4) saturate(0);
   }
-  #tv-content.tv-on {
+  .tv-screen.tv-on {
     animation: tvPowerOn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   @keyframes tvPowerOn {
@@ -111,8 +111,8 @@
     100% { opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
-    #tv-content.tv-off { opacity: 1; clip-path: none; transform: none; filter: none; }
-    #tv-content.tv-on { animation: none; }
+    .tv-screen.tv-off { opacity: 1; clip-path: none; transform: none; filter: none; }
+    .tv-screen.tv-on { animation: none; }
     #tv-flash.flash-active { animation: none; }
   }
   /* ── END TV POWER-ON EFFECT ── */
@@ -204,7 +204,7 @@
   }
 
   /* --- CRT / old TV effect --- */
-  .map-card::before {
+  .map-card::before, .device-card::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -219,7 +219,7 @@
     );
     animation: crt-scan-drift 6s linear infinite;
   }
-  .map-card::after {
+  .map-card::after, .device-card::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -259,7 +259,7 @@
     100% { transform: translate(2%, -2%); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .map-card::before, .map-card::after, .crt-noise { animation: none; }
+    .map-card::before, .map-card::after, .device-card::before, .device-card::after, .crt-noise { animation: none; }
   }
   /* --- end CRT effect --- */
 
@@ -531,6 +531,44 @@
     padding: 10px 12px;
   }
   .remote-note b { color: var(--warn); }
+
+  /* ── DEVICE SELECT / TOOL SELECT SCREENS ── */
+  #device-select, #tool-select {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .device-card {
+    position: relative;
+    width: min(900px, 92vw);
+    line-height: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 0 60px -10px var(--cyan-glow);
+  }
+  .device-card img.device-img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  #tool-select .device-card { margin-bottom: 24px; }
+
+  svg.device-hit-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .device-hit-poly {
+    fill: rgba(255, 255, 255, 0);
+    cursor: pointer;
+    transition: fill 0.2s ease-out;
+  }
+  .device-hit-poly:hover {
+    fill: rgba(53, 193, 232, 0.18);
+  }
 </style>
 </head>
 <body>
@@ -546,7 +584,20 @@
 </div>
 
 
-<div id="tv-content" class="tv-off">
+<!-- Screen 1: device select, shown right after the preloader -->
+<div id="device-select" class="tv-screen tv-off" style="display:none;">
+  <div class="title-block">
+    <img class="title-logo" src="https://i.ibb.co/cSYFH6Y1/YBNLogo.png" alt="YBN Logo">
+  </div>
+  <div class="device-card" id="deviceCard">
+    <img class="device-img" id="deviceImg" src="https://i.ibb.co/2GZXFrF/askingdevice.png" alt="Are you using VPS, WinSCP, or FileZilla?">
+    <svg class="device-hit-layer" id="deviceHitLayer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+    <div class="crt-noise"></div>
+  </div>
+</div>
+
+<!-- Screen 2: existing map/resource checker, shown after choosing VPS -->
+<div id="tv-content" class="tv-screen tv-off" style="display:none;">
 
 <div class="title-block">
   <img class="title-logo" src="https://i.ibb.co/cSYFH6Y1/YBNLogo.png" alt="YBN Logo">
@@ -569,6 +620,19 @@
 </div>
 
 </div>
+
+<!-- Screen 3: shown after choosing WinSCP or FileZilla -->
+<div id="tool-select" class="tv-screen tv-off" style="display:none;">
+  <div class="title-block">
+    <img class="title-logo" src="https://i.ibb.co/cSYFH6Y1/YBNLogo.png" alt="YBN Logo">
+  </div>
+  <div class="device-card">
+    <img class="device-img" id="toolImg" src="https://i.ibb.co/1fYMGL0s/6781d4c9-f22a-4f60-a88d-0f53043a6f11-1.png" alt="Download YBNTool">
+    <svg class="device-hit-layer" id="toolHitLayer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+    <div class="crt-noise"></div>
+  </div>
+</div>
+
 <div id="tv-flash"></div>
 
 <!-- Modal -->
@@ -768,7 +832,71 @@ const ZONES = [
 // into the map image itself. Not a city zone — clicking it opens the
 // tutorial video link instead of the resource folder flow.
 const TUTORIAL_ZONE_PIXELS = "950,85,931,85,924,98,926,145,933,160,967,166,1244,175,1256,169,1261,153,1257,110,1242,99";
-const TUTORIAL_LINK = "#"; // replace with the real video link when ready
+const TUTORIAL_LINK = "https://youtu.be/-WXZZcx59AQ";
+
+/*
+  ============================================================
+  DEVICE-SELECT ZONES ("Are you using VPS / WinSCP / FileZilla?")
+  Same format as the city ZONES above — raw pixel coordinates
+  copied from image-map.net, run against the actual image at
+  https://i.ibb.co/2GZXFrF/askingdevice.png (open that image in
+  image-map.net, draw your box/polygon, paste the coordinate
+  string in here). They auto-convert to percentages at runtime
+  using the image's real natural width/height, so edit these
+  freely without worrying about display size.
+  ============================================================
+*/
+const DEVICE_ZONES = [
+  { id: "vps",       pixelPoints: "174,619,350,619,350,704,174,704" },
+  { id: "winscp",    pixelPoints: "496,618,842,618,842,704,496,704" },
+  { id: "filezilla", pixelPoints: "945,617,1251,617,1251,704,945,704" }
+];
+
+/*
+  ============================================================
+  TOOL-SELECT ZONE (the baked-in "DOWNLOAD YBNTOOL" button on
+  the WinSCP/FileZilla screen). This one is a rough estimate —
+  open https://i.ibb.co/1fYMGL0s/6781d4c9-f22a-4f60-a88d-0f53043a6f11-1.png
+  in image-map.net and replace the pixelPoints string below with
+  your own traced coordinates.
+  ============================================================
+*/
+/*
+  ============================================================
+  TOOL-SELECT ZONES (the baked-in "DOWNLOAD YBNTOOL" button and
+  the "WATCH A TUTORIAL" button on the WinSCP/FileZilla screen).
+  Same format as everything else — open the image at
+  https://i.ibb.co/1fYMGL0s/6781d4c9-f22a-4f60-a88d-0f53043a6f11-1.png
+  in image-map.net (https://www.image-map.net/) and paste your own
+  traced coordinates in here whenever you want to adjust these.
+  ============================================================
+*/
+const TOOL_ZONES = [
+  { id: "ybntool-download", pixelPoints: "261,692,245,697,233,712,232,851,244,874,263,880,1100,882,1132,881,1146,863,1154,834,1151,731,1147,710,1124,694" },
+  { id: "watch-tutorial",   pixelPoints: "952,84,939,89,932,120,939,150,948,164,971,164,1260,177,1280,178,1288,161,1286,116,1268,99" }
+];
+const TOOL_TUTORIAL_LINK = "https://youtu.be/-WXZZcx59AQ";
+
+// Generic renderer for a simple rectangle/polygon hit-layer (device-select, tool-select)
+function renderHitLayer(imgEl, svgEl, zones, onZoneClick) {
+  if (!imgEl || !svgEl) return;
+  svgEl.innerHTML = '';
+  const naturalW = imgEl.naturalWidth;
+  const naturalH = imgEl.naturalHeight;
+  if (!naturalW || !naturalH) return; // image not loaded yet
+
+  zones.forEach(zone => {
+    const pctPoints = pixelPointsToPercent(zone.pixelPoints, naturalW, naturalH);
+    const pointsAttr = pctPoints.map(p => `${p[0]},${p[1]}`).join(' ');
+
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', pointsAttr);
+    poly.setAttribute('class', 'device-hit-poly');
+    poly.dataset.target = zone.id;
+    poly.addEventListener('click', () => onZoneClick(zone.id));
+    svgEl.appendChild(poly);
+  });
+}
 
 const basemapImg = document.querySelector('.basemap');
 
@@ -1008,12 +1136,67 @@ if (basemapImg.complete && basemapImg.naturalWidth) {
 }
 window.addEventListener('resize', renderZones);
 
+// ── SCREEN SWITCHING (device-select ↔ resource checker ↔ tool download) ──
+var tvFlash = document.getElementById('tv-flash');
+var deviceSelectScreen = document.getElementById('device-select');
+var resourceCheckerScreen = document.getElementById('tv-content');
+var toolSelectScreen = document.getElementById('tool-select');
+
+function showScreen(target) {
+  document.querySelectorAll('.tv-screen').forEach(function(s) {
+    if (s !== target) s.style.display = 'none';
+  });
+
+  target.style.display = 'flex';
+  target.classList.remove('tv-on');
+  target.classList.add('tv-off');
+  void target.offsetWidth; // force reflow so the animation replays
+  target.classList.remove('tv-off');
+  target.classList.add('tv-on');
+
+  if (tvFlash) {
+    tvFlash.classList.add('flash-active');
+    setTimeout(function() { tvFlash.classList.remove('flash-active'); }, 550);
+  }
+}
+
+function handleDeviceZoneClick(target) {
+  if (target === 'vps') {
+    showScreen(resourceCheckerScreen);
+  } else if (target === 'winscp' || target === 'filezilla') {
+    showScreen(toolSelectScreen);
+  }
+}
+
+function handleToolZoneClick(target) {
+  if (target === 'ybntool-download') {
+    window.open('https://github.com/ybnmilosmlo/YBNTool', '_blank');
+  } else if (target === 'watch-tutorial') {
+    window.open(TOOL_TUTORIAL_LINK, '_blank');
+  }
+}
+
+var deviceImg = document.getElementById('deviceImg');
+var deviceHitLayer = document.getElementById('deviceHitLayer');
+var toolImg = document.getElementById('toolImg');
+var toolHitLayer = document.getElementById('toolHitLayer');
+
+function renderDeviceHits() { renderHitLayer(deviceImg, deviceHitLayer, DEVICE_ZONES, handleDeviceZoneClick); }
+function renderToolHits() { renderHitLayer(toolImg, toolHitLayer, TOOL_ZONES, handleToolZoneClick); }
+
+if (deviceImg.complete && deviceImg.naturalWidth) { renderDeviceHits(); }
+else { deviceImg.addEventListener('load', renderDeviceHits); }
+
+if (toolImg.complete && toolImg.naturalWidth) { renderToolHits(); }
+else { toolImg.addEventListener('load', renderToolHits); }
+
+window.addEventListener('resize', renderDeviceHits);
+window.addEventListener('resize', renderToolHits);
+
 // ── PRELOADER sequence ──
 (function() {
   var preloader = document.getElementById('preloader');
   var fill = document.getElementById('pre-img-fill');
-  var tvContent = document.getElementById('tv-content');
-  var tvFlash = document.getElementById('tv-flash');
   if (!preloader || !fill) return;
 
   // After fill completes (~2.4s): glow burst
@@ -1021,18 +1204,12 @@ window.addEventListener('resize', renderZones);
     fill.classList.add('filled');
 
     // 500ms after glow starts: fade the preloader out AND power on the "TV"
+    // with the device-select screen (VPS / WinSCP / FileZilla)
     setTimeout(function() {
       preloader.classList.add('hide');
       setTimeout(function() { preloader.style.display = 'none'; }, 1200);
 
-      if (tvContent) {
-        tvContent.classList.remove('tv-off');
-        tvContent.classList.add('tv-on');
-      }
-      if (tvFlash) {
-        tvFlash.classList.add('flash-active');
-        setTimeout(function() { tvFlash.classList.remove('flash-active'); }, 550);
-      }
+      showScreen(deviceSelectScreen);
     }, 500);
   }, 2400);
 })();
